@@ -5,3 +5,6 @@
 /.coveralls.yml
 /typings
 /typings.json
+/tsconfig.json
+/src
+/es6
