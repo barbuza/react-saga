@@ -13,7 +13,14 @@
     "build": "tsc && babel -d lib es6",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   },
-  "author": "",
+  "author": {
+    "name": "Victor Kotseruba",
+    "url": "https://github.com/barbuza"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/barbuza/react-saga.git"
+  },
   "license": "ISC",
   "peerDependencies": {
     "immutable": "^3.7.6",
