@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "es6",
+    "noImplicitAny": true,
+    "outDir": "es6",
+    "jsx": "react",
+    "allowSyntheticDefaultImports": true
+  },
+  "files": [
+    "src/react.d.ts",
+    "node_modules/immutable/dist/immutable.d.ts",
+    "src/index.tsx"
+  ]
+}
