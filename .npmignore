@@ -1,0 +1,5 @@
+/.idea
+/.gitignore
+/.travis.yml
+/.nyc_output
+/.coveralls.yml

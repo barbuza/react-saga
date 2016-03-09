@@ -4,12 +4,12 @@
     "module": "es6",
     "noImplicitAny": true,
     "outDir": "es6",
-    "jsx": "react",
-    "allowSyntheticDefaultImports": true
+    "jsx": "react"
   },
   "files": [
     "src/react.d.ts",
     "node_modules/immutable/dist/immutable.d.ts",
+    "src/redux-saga.d.ts",
     "src/index.tsx"
   ]
 }

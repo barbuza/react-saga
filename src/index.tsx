@@ -1,6 +1,6 @@
-import React from 'react';
-import Immutable from 'immutable';
-
+import * as Immutable from 'immutable';
+import { takeLatest } from 'redux-saga';
+import { fork, cancel } from 'redux-saga/effects';
 import {
   isValidElement,
   Component,
@@ -9,9 +9,9 @@ import {
   Props,
   Ref,
   ReactChild,
-  Key
+  Key,
+  Children
 } from 'react';
-
 
 interface PropsElement<P> extends ReactElement<P & Props<any>> {
 }
@@ -45,10 +45,6 @@ function isValidChild(object?:any):object is PropsElement<any> {
   return object == null || isValidElement(object)
 }
 
-function isReactChildren(object:any):boolean {
-  return isValidChild(object) || (Array.isArray(object) && object.every(isValidChild))
-}
-
 function* gen():any {
 }
 
@@ -70,28 +66,32 @@ function isPlainFunction(fn:any):fn is FunctionConstructor {
   return typeof fn === 'function' && Object.getPrototypeOf(fn) === plainProto;
 }
 
-function flattenGroup<P, S>(node:PropsElement<P>, getState:() => S):SagaDescriptor<{}, S>[] {
+function childCheckFail(node:any) {
+  throw new Error(`invalid node type ${node && node.type}`);
+}
+
+function renderGroup<P, S>(node:PropsElement<P>, getState:() => S):SagaDescriptor<{}, S>[] {
   const children:SagaDescriptor<{}, S>[] = [];
-  React.Children.forEach(node.props.children, (child:ReactChild, index:number) => {
+  Children.forEach(node.props.children, (child:ReactChild, index:number) => {
     if (isValidChild(child)) {
-      children.push(...flatten(child, getState));
+      children.push(...render(child, getState));
     } else {
-      throw new Error(`invalid child ${node.type}`);
+      childCheckFail(node);
     }
   });
   return children;
 }
 
-function flatten<P, S>(node:PropsElement<P>, getState:() => S):SagaDescriptor<{}, S>[] {
+export function render<P, S>(node:PropsElement<P>, getState:() => S):SagaDescriptor<{}, S>[] {
   if (!node) {
     return [];
   }
   if (typeof node.type === 'string') {
-    throw new Error(`invalid node type ${node.type}`);
+    childCheckFail(node);
   }
   if (isFunctionElement(node)) {
     if (Object.is(node.type, Group)) {
-      return flattenGroup(node, getState);
+      return renderGroup(node, getState);
     } else if (isSaga(node.type)) {
       const descriptor:SagaDescriptor<{}, S> = makeSagaDescriptor({
         saga: node.type,
@@ -99,12 +99,54 @@ function flatten<P, S>(node:PropsElement<P>, getState:() => S):SagaDescriptor<{}
       }) as any;
       return [descriptor];
     } else if (isPlainFunction(node.type)) {
-      return flatten(node.type(Object.assign({}, node.props, { getState })), getState);
+      return render(node.type(Object.assign({}, node.props, { getState })), getState);
     }
   }
-  throw new Error(`invalid node type ${node.type}`);
+  childCheckFail(node);
 }
 
-export function getSagas<S>(node:PropsElement<{}>, getState:() => S):Immutable.Set<SagaDescriptor<{}, S>> {
-  return Immutable.Set(flatten(node, getState));
+function getSagas<S>(node:PropsElement<{}>, getState:() => S):Immutable.OrderedSet<SagaDescriptor<{}, S>> {
+  return Immutable.OrderedSet(render(node, getState));
 }
+
+export function reactSaga<S>(node:PropsElement<{}>):ReduxSaga.Saga<S> {
+  return function* reactSaga(getState:() => S):ReduxSaga.Result {
+    let runningSagas = Immutable.OrderedMap<SagaDescriptor<{}, S>, ReduxSaga.ForkedSaga>();
+
+    function* step():ReduxSaga.Result {
+      const sagas = getSagas(node, getState);
+
+      const kill = runningSagas.keySeq().filter(spec => !sagas.contains(spec));
+      const spawn = sagas.filter(spec => !runningSagas.has(spec));
+      const keep = runningSagas.filter((_, spec) => sagas.contains(spec));
+
+      if (kill.isEmpty() && spawn.isEmpty()) {
+        return;
+      }
+
+      const killEffects = kill
+        .map((spec:SagaDescriptor<{}, S>) =>
+          cancel(runningSagas.get(spec)))
+        .toArray();
+
+      const spawnEffects = spawn
+        .map((spec:SagaDescriptor<{}, S>) =>
+          fork((spec.saga as any) as ReduxSaga.Saga<S>, spec.props.toJS()))
+        .toArray();
+
+      const result = yield [...killEffects, ...spawnEffects];
+
+      runningSagas = Immutable.OrderedMap(
+        keep.concat(spawn.toList().zip(result.slice(killEffects.length)))
+      ) as Immutable.OrderedMap<SagaDescriptor<{}, S>, ReduxSaga.ForkedSaga>;
+    }
+
+    try {
+      yield* step();
+      yield* takeLatest('*', step);
+    } finally {
+      yield* runningSagas.entrySeq().map(forkedSaga => cancel(forkedSaga)).toArray();
+    }
+  }
+}
+
