@@ -3,3 +3,5 @@
 /.travis.yml
 /.nyc_output
 /.coveralls.yml
+/typings
+/typings.json

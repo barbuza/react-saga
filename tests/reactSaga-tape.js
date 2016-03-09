@@ -1,18 +1,27 @@
+import 'babel-polyfill';
 import test from 'tape';
 import React from 'react';
 import { createStore, applyMiddleware } from 'redux';
 import sagaMiddleware  from 'redux-saga';
-import { take, put } from 'redux-saga/effects';
+import { take, put, fork, cancel } from 'redux-saga/effects';
 
 import { Group, reactSaga, render } from '../es6/index';
 
 const SET_USER = 'SET_USER';
 const USER_START = 'USER_START';
 const USER_STOP = 'USER_STOP';
+const TEST_STOP = 'TEST_STOP';
+const TEST_START = 'TEST_START';
+const PARENT_STOP = 'PARENT_STOP';
 
 function* Test(props) {
-  while (true) {
-    yield take();
+  yield put({ type: TEST_START });
+  try {
+    while (true) {
+      yield take();
+    }
+  } finally {
+    yield put({ type: TEST_STOP });
   }
 }
 
@@ -37,17 +46,21 @@ function User({ getState }) {
   }
 }
 
-function reducer(state = { user: null, userSaga: 0 }, action) {
-  if (action.type === SET_USER) {
+function reducer(state = { user: null, userSaga: 0, testSaga: 0 }, action) {
+  switch (action.type) {
+  case SET_USER:
     return { ...state, user: action.user };
-  }
-  if (action.type === USER_START) {
+  case USER_START:
     return { ...state, userSaga: state.userSaga + 1 };
-  }
-  if (action.type === USER_STOP) {
+  case USER_STOP:
     return { ...state, userSaga: state.userSaga - 1 };
+  case TEST_START:
+    return { ...state, testSaga: state.testSaga + 1 };
+  case TEST_STOP:
+    return { ...state, testSaga: state.testSaga - 1 };
+  default:
+    return state;
   }
-  return state;
 }
 
 const sagaTree = (
@@ -66,9 +79,7 @@ function delay() {
 class Header extends React.Component {
 }
 
-test('reactSaga', t => {
-  const store = applyMiddleware(sagaMiddleware(reactSaga(sagaTree)))(createStore)(reducer);
-
+test('errors', t => {
   t.throws(() => {
     render(<div />, () => ({}));
   }, /invalid node type/);
@@ -84,6 +95,12 @@ test('reactSaga', t => {
   t.throws(() => {
     render(<Header />, () => ({ user: 'fail' }));
   }, /invalid node type/);
+
+  t.end();
+});
+
+test('basic', t => {
+  const store = applyMiddleware(sagaMiddleware(reactSaga(sagaTree)))(createStore)(reducer);
 
   (async() => {
     t.equal(store.getState().userSaga, 0);
@@ -102,6 +119,25 @@ test('reactSaga', t => {
     store.dispatch({ type: SET_USER, user: null });
     await delay();
     t.equal(store.getState().userSaga, 0);
+    t.end();
+  })();
+});
+
+test('shutdown', t => {
+  function* parent(getState) {
+    const task = yield fork(reactSaga(sagaTree), getState);
+    yield take(PARENT_STOP);
+    yield cancel(task);
+  }
+
+  const store = applyMiddleware(sagaMiddleware(parent))(createStore)(reducer);
+
+  (async() => {
+    await delay();
+    t.equal(store.getState().testSaga, 1);
+    store.dispatch({ type: PARENT_STOP });
+    await delay();
+    t.equal(store.getState().testSaga, 0);
     t.end();
   })();
 });

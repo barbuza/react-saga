@@ -1,6 +1,6 @@
 import * as Immutable from 'immutable';
-import { takeLatest } from 'redux-saga';
-import { fork, cancel } from 'redux-saga/effects';
+import { takeLatest, Task } from 'redux-saga';
+import { fork, cancel, Effect, EffectFunction } from 'redux-saga/effects';
 import {
   isValidElement,
   Component,
@@ -20,13 +20,13 @@ interface SagaProps<S> {
   getState: () => S;
 }
 
-interface Saga<P, S> extends StatelessComponent<P & SagaProps<S>> {
+interface SagaComponent<P, S> extends StatelessComponent<P & SagaProps<S>> {
 }
 
 const makeSagaDescriptor = Immutable.Record({ saga: null, props: null }, 'SagaDescriptor');
 
 interface SagaDescriptor<P, S> {
-  saga: Saga<P, S>;
+  saga: SagaComponent<P, S>;
   props: Immutable.Map<string, any>
 }
 
@@ -38,8 +38,12 @@ interface FunctionElement<P> {
 }
 
 interface SagaElement extends FunctionElement<{}> {
-  type: Saga<{}, {}>;
+  type: SagaComponent<{}, {}>;
 }
+
+type SagaResult = IterableIterator<Effect>;
+type ReactSagaGenerator<P, S> = (props:P & SagaProps<S>) => SagaResult;
+type SagaGenerator<S> = (getState:() => S) => SagaResult;
 
 function isValidChild(object?:any):object is PropsElement<any> {
   return object == null || isValidElement(object)
@@ -48,7 +52,9 @@ function isValidChild(object?:any):object is PropsElement<any> {
 function* gen():any {
 }
 
-function isSaga<P, S>(fn:StatelessComponent<P>):fn is Saga<P, S> {
+const genPrototype = Object.getPrototypeOf
+
+function isSaga<P, S>(fn:StatelessComponent<P>):fn is SagaComponent<P, S> {
   return Object.is(fn.prototype, gen.prototype)
     || Object.is((fn as any)['__proto__'], (gen as any)['__proto__']);
 }
@@ -109,11 +115,17 @@ function getSagas<S>(node:PropsElement<{}>, getState:() => S):Immutable.OrderedS
   return Immutable.OrderedSet(render(node, getState));
 }
 
-export function reactSaga<S>(node:PropsElement<{}>):ReduxSaga.Saga<S> {
-  return function* reactSaga(getState:() => S):ReduxSaga.Result {
-    let runningSagas = Immutable.OrderedMap<SagaDescriptor<{}, S>, ReduxSaga.ForkedSaga>();
+function forkDescriptor<P, S>(spec:SagaDescriptor<P, S>):Task<any> {
+  return fork(spec.saga as any, spec.props.toJS()) as Task<any>;
+}
 
-    function* step():ReduxSaga.Result {
+export function reactSaga<S>(node:PropsElement<{}>):SagaGenerator<S> {
+  type Spec = SagaDescriptor<{}, S>;
+
+  return function* reactSaga(getState:() => S):SagaResult {
+    let runningSagas = Immutable.OrderedMap<Spec, Task<any>>();
+
+    function* step():SagaResult {
       const sagas = getSagas(node, getState);
 
       const kill = runningSagas.keySeq().filter(spec => !sagas.contains(spec));
@@ -125,27 +137,30 @@ export function reactSaga<S>(node:PropsElement<{}>):ReduxSaga.Saga<S> {
       }
 
       const killEffects = kill
-        .map((spec:SagaDescriptor<{}, S>) =>
-          cancel(runningSagas.get(spec)))
+        .map((spec:Spec) => runningSagas.get(spec))
+        .map(cancel)
         .toArray();
 
       const spawnEffects = spawn
-        .map((spec:SagaDescriptor<{}, S>) =>
-          fork((spec.saga as any) as ReduxSaga.Saga<S>, spec.props.toJS()))
+        .map(forkDescriptor)
         .toArray();
 
       const result = yield [...killEffects, ...spawnEffects];
 
       runningSagas = Immutable.OrderedMap(
-        keep.concat(spawn.toList().zip(result.slice(killEffects.length)))
-      ) as Immutable.OrderedMap<SagaDescriptor<{}, S>, ReduxSaga.ForkedSaga>;
+        keep.concat(
+          spawn.toList().zip(
+            Immutable.Iterable(result).slice(killEffects.length)
+          )
+        )
+      ) as Immutable.OrderedMap<Spec, Task<any>>;
     }
 
     try {
       yield* step();
       yield* takeLatest('*', step);
     } finally {
-      yield* runningSagas.entrySeq().map(forkedSaga => cancel(forkedSaga)).toArray();
+      yield* runningSagas.valueSeq().map(cancel).toArray();
     }
   }
 }

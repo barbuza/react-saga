@@ -4,8 +4,11 @@
   "description": "declarative saga management with jsx",
   "main": "index.js",
   "scripts": {
+    "postinstall": "typings i",
     "prepublish": "npm run clean && npm run build",
     "test": "nyc -i babel-register -i babel-polyfill tape tests/*-tape.js",
+    "browser-mac": "browserify -t babelify tests/*-tape.js | testling -x open",
+    "browser": "browserify -t babelify tests/*-tape.js | testling",
     "clean": "rimraf es6 lib",
     "build": "tsc && babel -d lib es6",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
@@ -24,6 +27,8 @@
     "babel-preset-react": "^6.5.0",
     "babel-preset-stage-0": "^6.5.0",
     "babel-register": "^6.6.5",
+    "babelify": "^7.2.0",
+    "browserify": "^13.0.0",
     "coveralls": "^2.11.8",
     "immutable": "^3.7.6",
     "nyc": "^6.0.0",
@@ -32,7 +37,9 @@
     "redux-saga": "^0.9.3",
     "rimraf": "^2.5.2",
     "tape": "^4.5.1",
+    "testling": "^1.7.1",
     "tslint": "^3.5.0",
-    "typescript": "^1.8.2"
+    "typescript": "^1.8.2",
+    "typings": "^0.7.5"
   }
 }
