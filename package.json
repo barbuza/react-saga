@@ -1,10 +1,9 @@
 {
   "name": "react-saga",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "declarative saga management with jsx",
   "main": "index.js",
   "scripts": {
-    "postinstall": "typings i",
     "prepublish": "npm run clean && npm run build",
     "test": "nyc -i babel-register -i babel-polyfill tape tests/*-tape.js",
     "browser-mac": "browserify -t babelify tests/*-tape.js | testling -x open",
