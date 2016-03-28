@@ -36,8 +36,7 @@ function* UserSaga(props) {
   }
 }
 
-function User({ getState }) {
-  const state = getState();
+function User({ state }) {
   if (state.user === 'fail') {
     return <div />;
   }
@@ -65,6 +64,7 @@ function reducer(state = { user: null, userSaga: 0, testSaga: 0 }, action) {
 
 const sagaTree = (
   <Group>
+    <Group>{false}</Group>
     <Group>
       <Test />
     </Group>
@@ -76,24 +76,17 @@ function delay() {
   return new Promise(resolve => setTimeout(resolve));
 }
 
-class Header extends React.Component {
-}
-
 test('errors', t => {
   t.throws(() => {
-    render(<div />, () => ({}));
+    render(<div />, {});
   }, /invalid node type/);
 
   t.throws(() => {
-    render(<User />, () => ({ user: 'fail' }));
+    render(<User />, { user: 'fail' });
   }, /invalid node type/);
 
   t.throws(() => {
-    render(<Group>spam</Group>, () => ({ user: 'fail' }));
-  }, /invalid node type/);
-
-  t.throws(() => {
-    render(<Header />, () => ({ user: 'fail' }));
+    render(<Group>spam</Group>, { user: 'fail' });
   }, /invalid node type/);
 
   t.end();
@@ -124,8 +117,8 @@ test('basic', t => {
 });
 
 test('shutdown', t => {
-  function* parent(getState) {
-    const task = yield fork(reactSaga(sagaTree), getState);
+  function* parent() {
+    const task = yield fork(reactSaga(sagaTree));
     yield take(PARENT_STOP);
     yield cancel(task);
   }

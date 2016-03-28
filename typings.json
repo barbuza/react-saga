@@ -2,6 +2,6 @@
   "ambientDependencies": {
     "react": "registry:dt/react#0.14.0+20160302224448",
     "redux": "registry:dt/redux#1.0.0+20160201195450",
-    "redux-saga": "registry:dt/redux-saga#0.9.1+20160228221530"
+    "redux-saga": "registry:dt/redux-saga#0.9.1+20160316155526"
   }
 }
