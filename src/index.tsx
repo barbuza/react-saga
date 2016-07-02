@@ -43,7 +43,7 @@ interface SagaElement extends FunctionElement<{}> {
 
 export type SagaResult = IterableIterator<Effect>;
 type ReactSagaGenerator<P, S> = (props: P & SagaProps<S>) => SagaResult;
-export type SagaGenerator = () => SagaResult;
+export type SagaGenerator = (payload?: any) => SagaResult;
 
 function isGenerator(fun: any): Boolean {
   return isGeneratorFunction(fun)
@@ -61,9 +61,11 @@ export interface IGroup {
   (props?: void, ...children: Array<PropsElement<any>>): any;
 }
 
+export type CustomGroup = (payload?: any) => PropsElement<any> | void;
+
 export const Group: IGroup = ((props: void, ...children: Array<PropsElement<any>>) => null) as IGroup;
 
-export function createElement<P>(cls: IGroup | SagaGenerator, props?: P, ...children: Array<PropsElement<any>>): PropsElement<P> {
+export function createElement<P>(cls: IGroup | SagaGenerator | CustomGroup, props?: P, ...children: Array<PropsElement<any>>): PropsElement<P> {
   return {
     type: cls as any,
     props: ((children.length ? Object.assign({}, props, { children }) : props) || {}) as P,
