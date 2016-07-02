@@ -58,15 +58,15 @@ function isValidChild(object?: any): object is PropsElement<any> {
 }
 
 export interface IGroup {
-  (): any;
+  (props?: void, ...children: Array<PropsElement<any>>): any;
 }
 
-export const Group: IGroup = (() => null) as IGroup;
+export const Group: IGroup = ((props: void, ...children: Array<PropsElement<any>>) => null) as IGroup;
 
-export function createElement<P>(cls: IGroup | SagaGenerator, props?: P): PropsElement<P> {
+export function createElement<P>(cls: IGroup | SagaGenerator, props?: P, ...children: Array<PropsElement<any>>): PropsElement<P> {
   return {
     type: cls as any,
-    props: props,
+    props: ((children.length ? Object.assign({}, props, { children }) : props) || {}) as P,
     key: null,
     ref: null
   };
@@ -82,13 +82,26 @@ function childCheckFail(node: any) {
 
 function renderGroup<P, S>(node: PropsElement<P>, state: S): SagaDescriptor<{}, S>[] {
   const children: SagaDescriptor<{}, S>[] = [];
-  Children.forEach(node.props.children, (child: ReactChild) => {
-    if (isValidChild(child)) {
-      children.push(...render(child, state));
+
+  if (node.props && node.props.children) {
+    if ({}.toString.call(node.props.children) === '[object Array]') {
+      (node.props.children as Array<ReactChild>).forEach(child => {
+        if (isValidChild(child)) {
+          children.push(...render(child, state));
+        } else {
+          childCheckFail(node);
+        }
+      });
     } else {
-      childCheckFail(node);
+      Children.forEach(node.props.children, (child: ReactChild) => {
+        if (isValidChild(child)) {
+          children.push(...render(child, state));
+        } else {
+          childCheckFail(node);
+        }
+      });
     }
-  });
+  }
   return children;
 }
 
@@ -97,7 +110,7 @@ export function render<P, S>(node: PropsElement<P>, state: S): SagaDescriptor<{}
     return [];
   }
   if (isFunctionElement(node)) {
-    if (node.type === Group) {
+    if ((node.type as any) === Group) {
       return renderGroup(node, state);
     } else if (isGenerator(node.type)) {
       const descriptor: SagaDescriptor<{}, S> = makeSagaDescriptor({

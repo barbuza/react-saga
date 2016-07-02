@@ -4,8 +4,9 @@ import React from 'react';
 import { createStore, applyMiddleware } from 'redux';
 import sagaMiddleware  from 'redux-saga';
 import { take, put, fork, cancel } from 'redux-saga/effects';
+import * as Immutable from 'immutable';
 
-import { Group, reactSaga, render } from '../es6/index';
+import { Group, reactSaga, render, createElement } from '../es6/index';
 
 const SET_USER = 'SET_USER';
 const USER_START = 'USER_START';
@@ -133,4 +134,20 @@ test('shutdown', t => {
     t.equal(store.getState().testSaga, 0);
     t.end();
   })();
+});
+
+test('createElement', t => {
+  const createElementTreee = createElement(Group, null,
+    createElement(Group),
+    createElement(Group, null,
+      createElement(Test)
+    ),
+    createElement(User)
+  );
+
+  t.ok(Immutable.is(
+    Immutable.fromJS(render(sagaTree, {})),
+    Immutable.fromJS(render(createElementTreee, {}))
+  ), 'render trees equal');
+  t.end();
 });
