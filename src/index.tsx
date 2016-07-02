@@ -13,19 +13,19 @@ import {
 } from 'react';
 import isGeneratorFunction from 'is-generator-function';
 
-interface PropsElement<P> extends ReactElement<P & Props<any>> {
+export interface PropsElement<P> extends ReactElement<P & Props<any>> {
 }
 
-interface SagaProps<S> {
+export interface SagaProps<S> {
   state: S;
 }
 
-interface SagaComponent<P, S> extends StatelessComponent<P & SagaProps<S>> {
+export interface SagaComponent<P, S> extends StatelessComponent<P & SagaProps<S>> {
 }
 
 const makeSagaDescriptor = Immutable.Record({ saga: null, props: null }, 'SagaDescriptor');
 
-interface SagaDescriptor<P, S> {
+export interface SagaDescriptor<P, S> {
   saga: SagaComponent<P, S>;
   props: Immutable.Map<string, any>
 }
@@ -41,9 +41,9 @@ interface SagaElement extends FunctionElement<{}> {
   type: SagaComponent<{}, {}>;
 }
 
-type SagaResult = IterableIterator<Effect>;
+export type SagaResult = IterableIterator<Effect>;
 type ReactSagaGenerator<P, S> = (props: P & SagaProps<S>) => SagaResult;
-type SagaGenerator = () => SagaResult;
+export type SagaGenerator = () => SagaResult;
 
 function isGenerator(fun: any): Boolean {
   return isGeneratorFunction(fun)

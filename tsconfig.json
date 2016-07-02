@@ -4,7 +4,8 @@
     "module": "es6",
     "noImplicitAny": true,
     "outDir": "es6",
-    "jsx": "react"
+    "jsx": "react",
+    "declaration": true
   },
   "files": [
     "node_modules/immutable/dist/immutable.d.ts",

@@ -1,15 +1,16 @@
 {
   "name": "react-saga",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "declarative saga management with jsx",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
   "scripts": {
     "prepublish": "npm run clean && npm run build",
     "test": "nyc -i babel-register -i babel-polyfill tape tests/*-tape.js",
     "browser-mac": "browserify -t babelify tests/*-tape.js | testling -x open",
     "browser": "browserify -t babelify tests/*-tape.js | testling",
     "clean": "rimraf es6 lib",
-    "build": "tsc && babel -d lib es6",
+    "build": "tsc && babel -d lib es6 && cp es6/index.d.ts lib/",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   },
   "author": {
