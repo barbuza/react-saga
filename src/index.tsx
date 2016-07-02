@@ -57,7 +57,19 @@ function isValidChild(object?: any): object is PropsElement<any> {
   return typeof object.type === 'function';
 }
 
-export function Group() {
+export interface IGroup {
+  (): any;
+}
+
+export const Group: IGroup = (() => null) as IGroup;
+
+export function createElement<P>(cls: IGroup | SagaGenerator, props?: P): PropsElement<P> {
+  return {
+    type: cls as any,
+    props: props,
+    key: null,
+    ref: null
+  };
 }
 
 function isFunctionElement<P>(node: ReactElement<P>): node is FunctionElement<P> {
@@ -163,4 +175,3 @@ export function reactSaga<S>(node: PropsElement<{}>, debugFn: (...args: any[]) =
     }
   }
 }
-
