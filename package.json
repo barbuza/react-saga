@@ -1,11 +1,11 @@
 {
   "name": "react-saga",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "declarative saga management with jsx",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "scripts": {
-    "prepublish": "npm run clean && npm run build",
+    "prepublish": "in-publish && npm run clean && npm run build || not-in-publish",
     "test": "nyc -i babel-register -i babel-polyfill tape tests/*-tape.js",
     "browser-mac": "browserify -t babelify tests/*-tape.js | testling -x open",
     "browser": "browserify -t babelify tests/*-tape.js | testling",
@@ -23,9 +23,9 @@
   },
   "license": "ISC",
   "peerDependencies": {
-    "immutable": "^3.7.6",
-    "react": "^0.14.7",
-    "redux-saga": "^0.9.5"
+    "immutable": "*",
+    "react": "*",
+    "redux-saga": "*"
   },
   "devDependencies": {
     "babel-cli": "^6.6.5",
@@ -38,6 +38,7 @@
     "browserify": "^13.0.0",
     "coveralls": "^2.11.8",
     "immutable": "^3.7.6",
+    "in-publish": "^2.0.0",
     "nyc": "^6.0.0",
     "react": "^0.14.7",
     "redux": "^3.3.1",
