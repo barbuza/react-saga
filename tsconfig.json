@@ -3,14 +3,10 @@
     "target": "es6",
     "module": "es6",
     "noImplicitAny": true,
+    "strict": true,
     "outDir": "es6",
     "jsx": "react",
-    "declaration": true
-  },
-  "files": [
-    "node_modules/immutable/dist/immutable.d.ts",
-    "typings/main.d.ts",
-    "src/generator.d.ts",
-    "src/index.tsx"
-  ]
+    "declaration": true,
+    "moduleResolution": "node"
+  }
 }

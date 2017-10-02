@@ -6,7 +6,6 @@ import {
   ReactElement,
   StatelessComponent,
   Props,
-  Ref,
   ReactChild,
   Key,
   Children
@@ -34,7 +33,6 @@ interface FunctionElement<P> {
   type: StatelessComponent<P>;
   props: P;
   key: Key;
-  ref: Ref<Component<P, any> | Element>;
 }
 
 interface SagaElement extends FunctionElement<{}> {
@@ -70,7 +68,6 @@ export function createElement<P>(cls: IGroup | SagaGenerator | CustomGroup, prop
     type: cls as any,
     props: ((children.length ? Object.assign({}, props, { children }) : props) || {}) as P,
     key: null,
-    ref: null
   };
 }
 
@@ -78,7 +75,7 @@ function isFunctionElement<P>(node: ReactElement<P>): node is FunctionElement<P>
   return typeof node.type === 'function';
 }
 
-function childCheckFail(node: any) {
+function childCheckFail(node: any): never {
   throw new Error(`invalid node type ${node && node.type}`);
 }
 
@@ -107,7 +104,7 @@ function renderGroup<P, S>(node: PropsElement<P>, state: S): SagaDescriptor<{}, 
   return children;
 }
 
-export function render<P, S>(node: PropsElement<P>, state: S): SagaDescriptor<{}, S>[] {
+export function render<P, S>(node: PropsElement<P> | null, state: S): SagaDescriptor<{}, S>[] {
   if (!node) {
     return [];
   }
@@ -124,7 +121,7 @@ export function render<P, S>(node: PropsElement<P>, state: S): SagaDescriptor<{}
       return render(node.type(Object.assign({}, node.props, { state })), state);
     }
   }
-  childCheckFail(node);
+  return childCheckFail(node);
 }
 
 function getSagas<S>(node: PropsElement<{}>, state: S): Immutable.OrderedSet<SagaDescriptor<{}, S>> {
@@ -135,7 +132,7 @@ function forkDescriptor<P, S>(spec: SagaDescriptor<P, S>): Task<any> {
   return fork(spec.saga as any, spec.props.toJS()) as Task<any>;
 }
 
-export function reactSaga<S>(node: PropsElement<{}>, debugFn: (...args: any[]) => void = null): SagaGenerator {
+export function reactSaga<S>(node: PropsElement<{}>, debugFn?: (...args: any[]) => void): SagaGenerator {
   type Spec = SagaDescriptor<{}, S>;
 
   return function* reactSaga(): SagaResult {
@@ -145,9 +142,9 @@ export function reactSaga<S>(node: PropsElement<{}>, debugFn: (...args: any[]) =
       const state = yield select();
       const sagas = getSagas(node, state);
 
-      const kill = runningSagas.keySeq().filter(spec => !sagas.contains(spec));
-      const spawn = sagas.filter(spec => !runningSagas.has(spec));
-      const keep = runningSagas.filter((_, spec) => sagas.contains(spec));
+      const kill = runningSagas.keySeq().filter((spec: Spec) => !sagas.contains(spec));
+      const spawn = sagas.filter((spec: Spec) => !runningSagas.has(spec));
+      const keep = runningSagas.filter((_, spec: Spec) => sagas.contains(spec));
 
       if (kill.isEmpty() && spawn.isEmpty()) {
         return;
@@ -163,10 +160,10 @@ export function reactSaga<S>(node: PropsElement<{}>, debugFn: (...args: any[]) =
         .toArray();
 
       if (debugFn) {
-        kill.forEach(spec => {
+        kill.forEach((spec: Spec) => {
           debugFn('kill %s', spec.saga.name, spec.props.toJS());
         });
-        spawn.forEach(spec => {
+        spawn.forEach((spec: Spec) => {
           debugFn('spawn %s', spec.saga.name, spec.props.toJS());
         });
       }
